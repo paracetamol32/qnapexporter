@@ -4,7 +4,7 @@ name: Build qnapexporter
 on: # yamllint disable-line rule:truthy
   push:
     branches:
-      - master
+      - "**"
   pull_request:
 
 jobs:
@@ -25,6 +25,14 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64, artifact_suffix: amd64 }
+          - { goos: linux, goarch: arm, goarm: 5, artifact_suffix: armv5 }
+          - { goos: linux, goarch: arm, goarm: 6, artifact_suffix: armv6 }
+          - { goos: linux, goarch: arm, goarm: 7, artifact_suffix: armv7 }
+          - { goos: linux, goarch: arm64, artifact_suffix: arm64 }
 
     steps:
       - name: Checkout code
@@ -39,12 +47,17 @@ jobs:
         run: mise run test
 
       - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          PACKAGE_VERSION: 0.0.${{ github.run_number }}
         run: mise run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: qnapexporter
+          name: qnapexporter-${{ matrix.artifact_suffix }}
           path: bin/qnapexporter
           retention-days: 30
 
@@ -77,6 +90,14 @@ jobs:
   build-qpkg:
     runs-on: ubuntu-latest
     needs: [build, build-image-qdk]
+    strategy:
+      matrix:
+        include:
+          - { artifact_suffix: amd64 }
+          - { artifact_suffix: armv5 }
+          - { artifact_suffix: armv6 }
+          - { artifact_suffix: armv7 }
+          - { artifact_suffix: arm64 }
 
     steps:
       - name: Checkout code
@@ -87,7 +108,7 @@ jobs:
       - name: Download qnapexporter artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: qnapexporter
+          name: qnapexporter-${{ matrix.artifact_suffix }}
           path: qpkg/shared/
 
       - name: Download qdk-image artifact
@@ -96,13 +117,15 @@ jobs:
           name: qdk-image.tar
           path: /tmp
 
-      - name: Set git sha_short
+      - name: Set package variables
         id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "qpkg_ver=0.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=QNAPExporter_0.0.${{ github.run_number }}_${{ matrix.artifact_suffix }}.qpkg" >> "$GITHUB_OUTPUT"
 
       - name: Prepare QPKG build
         run: |
-          sed -i 's/QPKG_VER="0.0.0"/QPKG_VER="${{ steps.vars.outputs.sha_short }}"/g' ./qpkg/qpkg.cfg
+          sed -i 's/QPKG_VER="0.0.0"/QPKG_VER="${{ steps.vars.outputs.qpkg_ver }}"/g' ./qpkg/qpkg.cfg
           chmod 755 qpkg/shared/qnapexporter
           docker load --input /tmp/qdk-image.tar
 
@@ -111,7 +134,7 @@ jobs:
 
       - name: Validate qpkg file size
         run: |
-          QPKG_FILE="qpkg/build/QNAPExporter_${{ steps.vars.outputs.sha_short }}.qpkg"
+          QPKG_FILE="qpkg/build/QNAPExporter_${{ steps.vars.outputs.qpkg_ver }}.qpkg"
           if [ ! -f "$QPKG_FILE" ]; then
             echo "::error::QPKG file not found: $QPKG_FILE"
             exit 1
@@ -124,12 +147,14 @@ jobs:
           fi
 
       - name: Validate qpkg trailer
-        run: ./qpkg/validate-tail.sh "qpkg/build/QNAPExporter_${{ steps.vars.outputs.sha_short }}.qpkg"
+        run: ./qpkg/validate-tail.sh "qpkg/build/QNAPExporter_${{ steps.vars.outputs.qpkg_ver }}.qpkg"
+
+      - name: Add architecture to QPKG artifact filename
+        run: cp "qpkg/build/QNAPExporter_${{ steps.vars.outputs.qpkg_ver }}.qpkg" "qpkg/build/${{ steps.vars.outputs.artifact_name }}"
 
       - name: Upload qpkg artifact
-        if: github.event_name == 'push'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: QNAPExporter_${{ steps.vars.outputs.sha_short }}.qpkg
-          path: qpkg/build/QNAPExporter_${{ steps.vars.outputs.sha_short }}.qpkg
+          name: ${{ steps.vars.outputs.artifact_name }}
+          path: qpkg/build/${{ steps.vars.outputs.artifact_name }}
           retention-days: 30

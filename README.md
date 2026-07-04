@@ -46,6 +46,13 @@ The easiest way to install and keep `qnapexporter` up to date is via the built-i
 1. Download the latest qnapexporter qpkg package from the [Releases page](https://github.com/pedropombeiro/qnapexporter/releases)
 1. Via web ui in QNAP, use manual installation in App Center. Please note that the installation will issue a warning because the QPKG package is not signed. When the binary is installed via QPKG, it will automatically start as background task and can be also stopped/started via App Center.
 
+## Development QPKG artifacts
+
+GitHub Actions builds installable QPKG artifacts for `amd64`, `arm64`, `armv5`,
+`armv6`, and `armv7` on every branch push and pull request. These development
+packages use a numeric CI version (`0.0.<run number>`) in the QPKG metadata and
+include the target architecture in the artifact filename.
+
 ## Building from source
 
 ### Prerequisites

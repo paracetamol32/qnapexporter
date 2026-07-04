@@ -159,3 +159,13 @@ jobs:
           file: qpkg/build/QNAPExporter_${{ env.QPKG_VER }}.qpkg
           asset_name: QNAPExporter_${{ github.ref_name }}_${{ matrix.goarch == 'arm' && format('{0}v{1}', matrix.goarch, matrix.goarm) || format('{0}', matrix.goarch) }}.qpkg
           overwrite: true
+
+      - name: Add architecture to QPKG artifact filename
+        run: cp "qpkg/build/QNAPExporter_${QPKG_VER}.qpkg" "qpkg/build/QNAPExporter_${{ github.ref_name }}_${{ matrix.goarch == 'arm' && format('{0}v{1}', matrix.goarch, matrix.goarm) || format('{0}', matrix.goarch) }}.qpkg"
+
+      - name: Upload qpkg artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: QNAPExporter_${{ github.ref_name }}_${{ matrix.goarch == 'arm' && format('{0}v{1}', matrix.goarch, matrix.goarm) || format('{0}', matrix.goarch) }}.qpkg
+          path: qpkg/build/QNAPExporter_${{ github.ref_name }}_${{ matrix.goarch == 'arm' && format('{0}v{1}', matrix.goarch, matrix.goarm) || format('{0}', matrix.goarch) }}.qpkg
+          retention-days: 30
