@@ -22,6 +22,7 @@ const (
 	netDir                     = "/sys/class/net"
 	flashcacheStatsPath        = "/proc/flashcache/CG0/flashcache_stats"
 	dmCacheStatsFilePathFormat = "/sys/block/%s/dm/cache/curr_stats"
+	zfsArcstatsPath            = "/proc/sys/kstat/zfs/misc/arcstats"
 
 	envValidity    = time.Duration(5 * time.Minute)
 	volumeValidity = time.Duration(1 * time.Minute)
@@ -54,6 +55,7 @@ type promExporter struct {
 	devices     []string
 	nvmePath    string
 	nvmeDevices []string
+	zfsArcstats string
 	halApp      string
 	enclosures  []qnapEnclosure
 	envExpiry   time.Time
@@ -82,6 +84,7 @@ func NewExporter(config ExporterConfig, status *exporter.Status) exporter.Export
 		ExporterConfig: config,
 		status:         status,
 		envExpiry:      now,
+		zfsArcstats:    zfsArcstatsPath,
 	}
 	e.fns = map[string]fetchMetricFn{
 		"version":         e.getVersionMetrics,
@@ -101,6 +104,7 @@ func NewExporter(config ExporterConfig, status *exporter.Status) exporter.Export
 		"NetworkStats":    e.getNetworkStatsMetrics,
 		"Ping":            e.getPingMetrics,
 		"NvmeSmart":       e.getNvmeSmartMetrics,
+		"ZfsArcStats":     e.getZFSArcStatsMetrics,
 	}
 
 	if status != nil {

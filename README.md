@@ -102,6 +102,31 @@ Add target to `scrape_configs` section of `prometheus.ini`
     - targets: ["localhost:9094"]
 ```
 
+## QuTS hero ZFS metrics
+
+On QuTS hero systems, `qnapexporter` automatically reads ZFS ARC statistics
+from `/proc/sys/kstat/zfs/misc/arcstats` when that file is present. Classic QTS
+systems do not expose this file, so no ZFS metrics are emitted there.
+
+Exported ARC metrics:
+
+- `qnap_zfs_arc_size_bytes`
+- `qnap_zfs_arc_target_size_bytes`
+- `qnap_zfs_arc_min_size_bytes`
+- `qnap_zfs_arc_max_size_bytes`
+- `qnap_zfs_arc_hits_total`
+- `qnap_zfs_arc_misses_total`
+
+Exported L2ARC metrics:
+
+- `qnap_zfs_l2arc_size_bytes`
+- `qnap_zfs_l2arc_allocated_bytes`
+- `qnap_zfs_l2arc_hits_total`
+- `qnap_zfs_l2arc_misses_total`
+- `qnap_zfs_l2arc_read_bytes_total`
+- `qnap_zfs_l2arc_write_bytes_total`
+- `qnap_zfs_l2arc_feeds_total`
+
 ## Customization
 
 qnapexporter supports the following command line flags:
