@@ -3,9 +3,9 @@ package prometheus
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
-
 	"github.com/pedropombeiro/qnapexporter/lib/utils"
 )
 
@@ -98,16 +98,39 @@ var zfsArcMetricDefs = []zfsArcMetricDef{
 }
 
 func (e *promExporter) getZFSArcStatsMetrics() ([]metric, error) {
-	lines, err := utils.ReadFileLines(e.zfsArcstats)
+	fi, err := os.Stat(e.zfsArcstats)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-
 		return nil, err
 	}
 
-	values := parseZFSArcStats(lines)
+	values := map[string]string{}
+
+	if fi.IsDir() {
+		for _, def := range zfsArcMetricDefs {
+			for _, key := range def.keys {
+				if _, ok := values[key]; ok {
+					continue
+				}
+
+				b, err := os.ReadFile(filepath.Join(e.zfsArcstats, key))
+				if err != nil {
+					continue
+				}
+
+				values[key] = strings.TrimSpace(string(b))
+			}
+		}
+	} else {
+		lines, err := utils.ReadFileLines(e.zfsArcstats)
+		if err != nil {
+			return nil, err
+		}
+
+		values = parseZFSArcStats(lines)
+	}
 	metrics := make([]metric, 0, len(zfsArcMetricDefs))
 	for _, def := range zfsArcMetricDefs {
 		valueStr, ok := firstZFSArcStatValue(values, def.keys)
